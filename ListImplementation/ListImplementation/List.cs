@@ -12,6 +12,11 @@ namespace ListImplementation
         private static readonly T[] _emptyArray = new T[0];
         private int _size;
         private int _version;
+
+        //question 1
+        [NonSerialized]
+        private Object _syncRoot;
+        //
         public int Count
         {
             get
@@ -73,7 +78,7 @@ namespace ListImplementation
         {
             if (collection == null)
                 ThrowHelper.ThrowArgumentNullException(ExceptionArgument.collection);
-            Contract.EndContractBlock();
+            //Contract.EndContractBlock();
 
             ICollection<T> c = collection as ICollection<T>;
             //if it's a collection, means <as> worked
@@ -96,7 +101,7 @@ namespace ListImplementation
                 _size = 0;
                 _items = _emptyArray;
                 // This enumerable could be empty.  Let Add allocate a new array, if needed.
-                // Note it will also go to _defaultCapacity first, not 1, then 2, etc.
+                // Note it will also go to _defaultCapacity first, not 1, then 2, etc. ??
 
                 using (IEnumerator<T> en = collection.GetEnumerator())
                 {
@@ -109,6 +114,43 @@ namespace ListImplementation
         }
 
         //methods
+        //pt1
+        bool System.Collections.IList.IsFixedSize
+        {
+            get { return false; }
+        }
+        bool ICollection<T>.IsReadOnly
+        {
+            get { return false; }
+        }
+
+        bool System.Collections.IList.IsReadOnly
+        {
+            get { return false; }
+        }
+
+        //Question 1 (continueing)
+        // Is this List synchronized (thread-safe)?
+        bool System.Collections.ICollection.IsSynchronized
+        {
+            get { return false; }
+        }
+
+        //Synchronization root for this object.
+        Object System.Collections.ICollection.SyncRoot
+        {
+            get
+            {
+                if (_syncRoot == null)
+                {
+                    System.Threading.Interlocked.CompareExchange<Object>(ref _syncRoot, new Object(), null);
+                }
+                return _syncRoot;
+            }
+        }
+        //
+
+
         public void Add(T item)
         {
             if (_size == _items.Length)
