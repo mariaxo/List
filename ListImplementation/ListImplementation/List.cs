@@ -511,8 +511,9 @@ namespace ListImplementation
             Array.Copy(_items, index, array, arrayIndex, count);
         }
 
-        //finding methods
-        //finds the index of the searching item
+        //FINDING methods
+        //finds the index of the searching item, which corresponds to some predicate
+        
         public bool Exists(Predicate<T> match)
         {
             return FindIndex(match) != -1;
@@ -968,20 +969,377 @@ namespace ListImplementation
             list._size = count;
             return list;
         }
+        
+        
+         //finds the index of the item, the firsr occurance
+        //forward searches the Item in the list
         public int IndexOf(T item)
         {
+            Contract.Ensures(Contract.Result<int>() >= -1);
+            Contract.Ensures(Contract.Result<int>() < Count);
+            return Array.IndexOf(_items, item, 0, _size);
 
         }
         int System.Collections.IList.IndexOf(Object item)
         {
+            if (IsCompatibleObject(item))
+            {
+                return IndexOf((T)item);
+            }
+            return -1;
         }
 
         public int IndexOf(T item, int index)
         {
+            if (index > _size)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.index, ExceptionResource.ArgumentOutOfRange_Index);
+            }
+            Contract.Ensures(Contract.Result<int>() >= -1);
+            Contract.Ensures(Contract.Result<int>() < Count);
+            Contract.EndContractBlock();
+
+            return Array.IndexOf(_items, item, index, _size - index);
         }
 
+
+        //Object.Equals is used 
         public int IndexOf(T item, int index, int count)
         {
+            if( index > _size)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.index, ExceptionResource.ArgumentOutOfRange_Index);
+            }
+
+            if (count < 0 || index > _size - count)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_Count);
+            }
+            Contract.Ensures(Contract.Result<int>() >= -1);
+            Contract.Ensures(Contract.Result<int>() < Count);
+            Contract.EndContractBlock();
+
+            return Array.IndexOf(_items, item, index, count);
         }
+
+        //Object.Equals is used
+        public int LastIndexOf(T item)
+        {
+            Contract.Ensures(Contract.Result<int>() >= -1);
+            Contract.Ensures(Contract.Result<int>() < Count);
+            if (_size == 0)
+            {  // Special case for empty list
+                return -1;
+            }
+            else
+            {
+                return LastIndexOf(item, _size - 1, _size);
+            }
+        }
+        public int LastIndexOf(T item, int index)
+        {
+            if (index >= _size)
+            {
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.index, ExceptionResource.ArgumentOutOfRange_Index);
+                throw new ArgumentOutOfRangeException();
+            }
+            Contract.Ensures(Contract.Result<int>() >= -1);
+            Contract.Ensures(((Count == 0) && (Contract.Result<int>() == -1)) || ((Count > 0) && (Contract.Result<int>() <= index)));
+            Contract.EndContractBlock();
+
+            //count is all the items from the beginning to index, so (index+1) items
+            return LastIndexOf(item, index, index + 1);
+
+        }
+
+        //return the index of the item in this list
+        //start looking from index and counting "count" numer of items
+        public int LastIndexOf(T item, int index, int count)
+        {
+            if((Count!=0) && (index < 0))
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.index, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            if((Count!=0) && (count < 0))
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            Contract.Ensures(Contract.Result<int>() >= -1);
+            Contract.Ensures(((Count == 0) && (Contract.Result<int>() == -1)) || ((Count > 0) && (Contract.Result<int>() <= index)));
+            Contract.EndContractBlock();
+
+            if (_size == 0)
+            {  // Special case for empty list
+                return -1;
+            }
+
+            if (index >= _size)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.index, ExceptionResource.ArgumentOutOfRange_BiggerThanCollection);
+            }
+
+            if (count > index + 1)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_BiggerThanCollection);
+            }
+
+            return Array.LastIndexOf(_items, item, index, count);
+        }
+
+
+
+        //removing : removes the element at the given index 
+        //size of the list is decreased by one
+        public void RemoveAt(int index)
+        {
+            if ((uint)index >= (uint)_size)
+            {
+                throw new ArgumentOutOfRangeException();
+                //hrowHelper.ThrowArgumentOutOfRangeException();
+            }
+            Contract.EndContractBlock();
+
+            //now _size is the last index of the list
+            _size--;
+
+            //if there are items until the end of the list starting from index, move them to the left
+            if(index < _size)
+            {
+                //count = _size - index: because we need one less item 
+                //before _size - index would count the initial index too, but now we do the items after index, so one less 
+                Array.Copy(_items, index + 1, _items, index, _size - index);
+            }
+            //last item in the list shall be the default
+            _items[_size] = default(T);
+
+            //change so
+            _version++;
+        }
+
+        public bool Remove(T item)
+        {
+            int index = IndexOf(item);
+            if(index >= 0)
+            {
+                RemoveAt(index);
+                return true;
+            }
+            return false;
+        }
+
+        void System.Collections.IList.Remove(Object item)
+        {
+            if (IsCompatibleObject(item))
+            {
+                Remove((T)item);
+            }
+        }
+
+        //removes a range of elements, starting from index, count items
+        public void RemoveRange(int index, int count)
+        {
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.index, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            if (_size - index < count)
+            {
+                throw new ArgumentException();
+                //ThrowHelper.ThrowArgumentException(ExceptionResource.Argument_InvalidOffLen);
+            }
+            Contract.EndContractBlock();
+
+            if (count > 0)
+            {
+                //why assigning? 
+                int i = _size;
+
+                //now _size is the index of the last item , after the removed items
+                _size -= count;
+                if (index < _size)
+                {
+                    Array.Copy(_items, index + count, _items, index, _size - index);
+                }
+                Array.Clear(_items, _size, count);
+                
+                //change, so
+                _version++;
+            }
+        }
+
+        // This method removes all items which matches the predicate.
+        //returns the number of elements removed
+        public int RemoveAll(Predicate<T> match)
+        {
+            if (match == null)
+            {
+                throw new ArgumentNullException();
+                //ThrowHelper.ThrowArgumentNullException(ExceptionArgument.match);
+            }
+            Contract.Ensures(Contract.Result<int>() >= 0);
+
+            //the value of Count at the start of the method shall be >= than the result
+            Contract.Ensures(Contract.Result<int>() <= Contract.OldValue(Count));
+            Contract.EndContractBlock();
+
+            int freeIndex = 0;   // the first free slot in items array
+                                 //it checks to see if that freeIndex index item needs to be removed or no
+            
+
+            _version++;
+            return 1;
+        }
+
+        //the item in the index place will now be at index+(index+count-i-1)
+        public void Reverse(int index, int count)
+        {
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.index, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException();
+
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            if (_size - index < count)
+            {
+                throw new ArgumentException();
+                //ThrowHelper.ThrowArgumentException(ExceptionResource.Argument_InvalidOffLen);
+            }
+            Contract.EndContractBlock();
+            Array.Reverse(_items, index, count);
+
+            //change
+            _version++;
+        }
+
+        public void Reverse()
+        {
+            Reverse(0, Count);
+        }
+
+
+
+        //sorting
+        //uses Array.Sort
+
+        //sort the list starting from index counting "count" items
+        public void Sort(int index, int count, IComparer<T> comparer)
+        {
+            if (index < 0)
+            {
+                throw new ArgumentOutOfRangeException();
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.index, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            if (count < 0)
+            {
+                throw new ArgumentOutOfRangeException();
+
+                //ThrowHelper.ThrowArgumentOutOfRangeException(ExceptionArgument.count, ExceptionResource.ArgumentOutOfRange_NeedNonNegNum);
+            }
+
+            if (_size - index < count)
+            {
+                throw new ArgumentException();
+                //ThrowHelper.ThrowArgumentException(ExceptionResource.Argument_InvalidOffLen);
+            }
+            Contract.EndContractBlock();
+
+            Array.Sort<T>(_items, index, count, comparer);
+            _version++;
+        }
+        public void Sort(IComparer<T> comparer)
+        {
+            Sort(0, Count, comparer);
+        }
+
+        //uses the default comparer and Array.Sort
+        public void Sort()
+        {
+            Sort(0, Count, null);
+        }
+
+        //Comparison<T> is a delegate, represents the method that compars two objects of the same type
+        //public delegate int Comparison<in T>(T x, T y);
+        // comparison(a,b) compares a and b
+        public void Sort(Comparison<T> comparison)
+        {
+            if (comparison == null)
+            {
+                throw new ArgumentNullException();
+                //ThrowHelper.ThrowArgumentNullException(ExceptionArgument.match);
+            }
+            Contract.EndContractBlock();
+
+            if(_size > 0)
+            {
+                //IComparer<T> comparer = new Array.FunctorComparer<T>(comparison);
+                //Array.Sort(_items, 0, _size, comparer);
+            }
+        }
+   
+        //O(n) operation that copies each item into the new array
+        //uses Array.Copy
+        public T[] ToArray()
+        {
+            Contract.Ensures(Contract.Result<T[]>() != null);
+            Contract.Ensures(Contract.Result<T[]>().Length == Count);
+
+            T[] array = new T[_size];
+            Array.Copy(_items, 0, array, 0, _size);
+
+            return array;
+        }
+        
+        public void TrimExcess()
+        {
+            int threshold = (int)(((double)_items.Length) * 0.9);
+            if (_size < threshold)
+            {
+                Capacity = _size;
+            }
+        }
+
+        public bool TrueForAll(Predicate<T> match)
+        {
+            if (match == null)
+            {
+                throw new ArgumentNullException();
+                //ThrowHelper.ThrowArgumentNullException(ExceptionArgument.match);
+            }
+            Contract.EndContractBlock();
+            for (int i = 0; i < _size; i++)
+            {
+                if(!match(_items[i]))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
     }
 }
